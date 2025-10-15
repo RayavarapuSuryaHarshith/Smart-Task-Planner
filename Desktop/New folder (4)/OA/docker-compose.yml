@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+  web:
+    build: .
+    ports:
+      - '8000:8000'
+    environment:
+      - PORT=8000
+      # Add OPENAI_API_KEY as a secret in your environment or docker run args if needed
+    volumes:
+      - .:/app:cached
