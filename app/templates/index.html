@@ -1,0 +1,270 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Smart Task Planner</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f8f9fa; }
+      .container { max-width: 1200px; margin: 0 auto; }
+      .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; border-radius: 12px; margin-bottom: 30px; text-align: center; }
+      .header h1 { margin: 0; font-size: 2.5em; font-weight: 300; }
+      .header p { margin: 10px 0 0 0; opacity: 0.9; }
+      
+      .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); margin-bottom: 30px; }
+      .form-group { margin-bottom: 20px; }
+      label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+      textarea { width: 100%; padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; resize: vertical; min-height: 80px; }
+      input[type="number"] { padding: 12px; border: 2px solid #e9ecef; border-radius: 8px; font-size: 16px; width: 120px; }
+      
+      .button-group { display: flex; gap: 12px; }
+      button { padding: 12px 24px; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+      .btn-primary { background: #667eea; color: white; }
+      .btn-primary:hover { background: #5a6fd8; transform: translateY(-2px); }
+      .btn-success { background: #28a745; color: white; }
+      .btn-success:hover { background: #218838; transform: translateY(-2px); }
+      
+      .results-section { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 30px; margin-bottom: 30px; }
+      .timeline-container { margin-top: 20px; }
+      .timeline-header { display: grid; grid-template-columns: 200px 1fr; gap: 20px; margin-bottom: 15px; }
+      .timeline-labels { display: flex; gap: 10px; font-size: 12px; color: #666; }
+      
+      .task-item { display: grid; grid-template-columns: 200px 1fr; gap: 20px; margin-bottom: 12px; align-items: center; }
+      .task-info { padding: 12px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #667eea; }
+      .task-title { font-weight: 600; margin-bottom: 4px; }
+      .task-meta { font-size: 12px; color: #666; }
+      
+      .timeline-bar { position: relative; height: 40px; background: #f1f3f4; border-radius: 6px; overflow: hidden; }
+      .task-bar { height: 100%; border-radius: 4px; position: absolute; display: flex; align-items: center; padding: 0 8px; color: white; font-size: 12px; font-weight: 600; }
+      
+      .phase-define { background: #4285f4; }
+      .phase-design { background: #34a853; }
+      .phase-build { background: #fbbc04; color: #333 !important; }
+      .phase-test { background: #ea4335; }
+      .phase-launch { background: #9c27b0; }
+      
+      .saved-plans { background: white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); padding: 30px; }
+      .plan-item { padding: 15px; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 10px; }
+      .plan-item:hover { background: #f8f9fa; }
+      .plan-goal { font-weight: 600; margin-bottom: 5px; }
+      .plan-date { font-size: 12px; color: #666; }
+      
+      .loading { text-align: center; color: #667eea; font-style: italic; }
+      .error { color: #ea4335; background: #ffeaea; padding: 15px; border-radius: 8px; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎯 Smart Task Planner</h1>
+        <p>Break down your goals into actionable tasks with AI-powered planning</p>
+      </div>
+      
+      <div class="form-card">
+        <form id="goalForm">
+          <div class="form-group">
+            <label for="goal">What's your goal?</label>
+            <textarea id="goal" placeholder="e.g., Launch a mobile app in 2 weeks">Launch a product in 14 days</textarea>
+          </div>
+          <div class="form-group">
+            <label for="due">Timeline (days)</label>
+            <input id="due" type="number" min="1" max="365" placeholder="14" />
+          </div>
+          <div class="button-group">
+            <button type="submit" class="btn-primary">📋 Generate Plan</button>
+        <button type="button" id="saveBtn" class="btn-success">💾 Save Plan</button>
+        <button type="button" id="clearSaved" class="btn-success" style="background:#dc3545;">🗑️ Clear Saved</button>
+          </div>
+        </form>
+      </div>
+      
+      <div class="results-section">
+        <h2>📊 Task Timeline</h2>
+        <div id="timeline-output">
+          <div class="loading">Enter a goal above to generate your task timeline</div>
+        </div>
+      </div>
+      
+      <div class="saved-plans">
+        <h2>📚 Saved Plans</h2>
+        <div id="saved-list">Loading...</div>
+      </div>
+    </div>
+
+    <script>
+      const form = document.getElementById('goalForm');
+      const saveBtn = document.getElementById('saveBtn');
+      const timelineOutput = document.getElementById('timeline-output');
+      const savedList = document.getElementById('saved-list');
+      let currentPlan = null;
+      
+      // Map a task.phase value to a color class. Do not remap titles — show exact task.title.
+      function getPhaseClass(task) {
+        if (!task || !task.phase) return 'phase-build';
+        const phase = String(task.phase).toLowerCase();
+        if (phase.includes('study') || phase.includes('read') || phase.includes('review')) return 'phase-define';
+        if (phase.includes('practice') || phase.includes('exercise') || phase.includes('create')) return 'phase-build';
+        if (phase.includes('mock') || phase.includes('test') || phase.includes('practice')) return 'phase-test';
+        if (phase.includes('pack') || phase.includes('book') || phase.includes('prepare')) return 'phase-design';
+        if (phase.includes('launch') || phase.includes('deploy') || phase.includes('travel')) return 'phase-launch';
+        return 'phase-build';
+      }
+      
+      function renderTimeline(plan, goal) {
+        if (!Array.isArray(plan)) {
+          timelineOutput.innerHTML = '<div class="error">Plan format not supported for timeline view</div><pre>' + JSON.stringify(plan, null, 2) + '</pre>';
+          return;
+        }
+        
+        const maxDay = Math.max(...plan.map(t => t.end_day || 0));
+        const dayWidth = 100 / (maxDay || 1);
+        
+        let html = `
+          <div style="margin-bottom: 20px; padding: 15px; background: #e3f2fd; border-radius: 8px;">
+            <strong>Goal:</strong> ${goal} | <strong>Total Duration:</strong> ${maxDay} days
+          </div>
+          <div class="timeline-container">
+            <div class="timeline-header">
+              <div><strong>Tasks</strong></div>
+              <div class="timeline-labels">`;
+        
+        for (let i = 0; i <= maxDay; i += Math.max(1, Math.floor(maxDay/10))) {
+          html += `<span style="width: ${dayWidth}%">Day ${i}</span>`;
+        }
+        html += '</div></div>';
+        
+        plan.forEach(task => {
+          const startPercent = ((task.start_day || 0) / maxDay) * 100;
+          const widthPercent = ((task.duration_days || 1) / maxDay) * 100;
+          const phaseClass = getPhaseClass(task);
+          
+          const priorityIcon = task.priority === 'high' ? '🔥' : task.priority === 'low' ? '📝' : '⭐';
+
+          // Show the raw task title on the left and include phase as a small badge if present.
+          html += `
+            <div class="task-item">
+              <div class="task-info">
+                <div class="task-title">${priorityIcon} ${task.title}</div>
+                <div class="task-meta">
+                  Day ${task.start_day}-${task.end_day} (${task.duration_days}d)
+                  ${task.priority ? `<br>Priority: ${task.priority}` : ''}
+                  ${task.description ? `<br>📋 ${task.description}` : ''}
+                  ${task.depends_on && task.depends_on.length ? '<br>🔗 Depends on: ' + task.depends_on.join(', ') : ''}
+                  ${task.phase ? `<br><small style="color:#555;">Phase: ${task.phase}</small>` : ''}
+                </div>
+              </div>
+              <div class="timeline-bar">
+                <div class="task-bar ${phaseClass}" style="left: ${startPercent}%; width: ${widthPercent}%">
+                  ${task.title.length > 40 ? task.title.substring(0, 37) + '...' : task.title}
+                </div>
+              </div>
+            </div>`;
+        });
+        
+        html += '</div>';
+        timelineOutput.innerHTML = html;
+      }
+      
+      async function loadSavedPlans() {
+        try {
+          const res = await fetch('/plans');
+          const plans = await res.json();
+          if (plans.length === 0) {
+            savedList.innerHTML = '<p style="color: #666; font-style: italic;">No saved plans yet</p>';
+            return;
+          }
+          
+          savedList.innerHTML = plans.map(p => `
+            <div class="plan-item">
+              <div class="plan-goal">${p.goal}</div>
+              <div class="plan-date">${new Date(p.created_at).toLocaleDateString()} • ${p.due_days || 'No'} days • ${Array.isArray(p.data) ? p.data.length : 0} tasks</div>
+              <div style="margin-top:8px;">
+                <button data-id="${p.id}" class="btn-small" onclick="loadSavedPlan(${p.id})">🔁 Show</button>
+                <button data-id="${p.id}" class="btn-small" onclick="deleteSavedPlan(${p.id})" style="background:#dc3545;color:white;padding:6px;border-radius:6px;border:none;">🗑 Delete</button>
+              </div>
+            </div>
+          `).join('');
+        } catch (err) {
+          savedList.innerHTML = '<div class="error">Error loading saved plans</div>';
+        }
+      }
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const goal = document.getElementById('goal').value;
+        const due = document.getElementById('due').value;
+        
+        const body = {goal: goal};
+        if(due) body.due_days = parseInt(due,10);
+        
+        const headers = {'content-type':'application/json'};
+        
+        timelineOutput.innerHTML = `<div class="loading">🤔 Generating your smart task breakdown...</div>`;
+        
+        try {
+          const res = await fetch('/plan', {method:'POST', headers, body:JSON.stringify(body)});
+          const result = await res.json();
+          currentPlan = result;
+          renderTimeline(result.plan, result.goal);
+        } catch(err) {
+          timelineOutput.innerHTML = '<div class="error">❌ Error: ' + err.toString() + '</div>';
+        }
+      });
+      
+      saveBtn.addEventListener('click', async () => {
+        const goal = document.getElementById('goal').value;
+        const due = document.getElementById('due').value;
+        const body = {goal: goal};
+        if(due) body.due_days = parseInt(due,10);
+        
+        try {
+          saveBtn.textContent = '💾 Saving...';
+          const res = await fetch('/plan/save', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(body)});
+          const result = await res.json();
+          saveBtn.textContent = '✅ Saved!';
+          setTimeout(() => { saveBtn.textContent = '💾 Save Plan'; }, 2000);
+          loadSavedPlans();
+        } catch(err) {
+          saveBtn.textContent = '❌ Error';
+          setTimeout(() => { saveBtn.textContent = '💾 Save Plan'; }, 2000);
+        }
+      });
+
+      document.getElementById('clearSaved').addEventListener('click', async () => {
+        if (!confirm('Delete all saved plans?')) return;
+        try {
+          const res = await fetch('/plans', {method:'DELETE'});
+          const json = await res.json();
+          alert('Deleted ' + json.deleted_count + ' plans');
+          loadSavedPlans();
+        } catch (e) {
+          alert('Error clearing plans');
+        }
+      });
+
+      window.loadSavedPlan = async function(id) {
+        try {
+          const res = await fetch('/plans');
+          const plans = await res.json();
+          const p = plans.find(x => x.id === id);
+          if (!p) { alert('Plan not found'); return; }
+          // Show the saved plan in the main timeline
+          currentPlan = {goal: p.goal, plan: p.data};
+          renderTimeline(p.data, p.goal);
+        } catch (e) { alert('Error loading plan'); }
+      }
+
+      window.deleteSavedPlan = async function(id) {
+        if (!confirm('Delete this plan?')) return;
+        try {
+          const res = await fetch('/plans/' + id, {method:'DELETE'});
+          if (res.status === 200) {
+            alert('Deleted'); loadSavedPlans();
+          } else alert('Delete failed');
+        } catch (e) { alert('Error'); }
+      }
+      
+      loadSavedPlans();
+    </script>
+  </body>
+</html>
