@@ -1,10 +1,10 @@
 # Smart Task Planner (minimal)
 
-This repository contains a minimal implementation of a Smart Task Planner: a backend API that breaks a user goal into actionable tasks with timelines and dependencies. It uses an LLM when `OPENAI_API_KEY` is set, otherwise a deterministic fallback heuristic.
+This repository contains a minimal implementation of a Smart Task Planner: a backend API that breaks a user goal into actionable tasks with timelines and dependencies. It uses **Groq's LLM** when `GROQ_API_KEY` is set, otherwise a deterministic fallback heuristic.
 
 Files created:
 - `app/main.py` - FastAPI app with `POST /plan` and a simple frontend
-- `app/llm.py` - LLM helper with OpenAI integration and fallback
+- `app/llm.py` - LLM helper with Groq integration and fallback
 - `app/templates/index.html` - Simple UI to submit a goal and view the plan
 - `tests/test_plan.py` - pytest tests for the API
 - `requirements.txt` - Python dependencies
@@ -17,8 +17,8 @@ Files created:
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-# Optional: Set OpenAI key (restart shell after setx)
-setx OPENAI_API_KEY "your_key_here"
+# Optional: Set Groq API key in .env or environment
+# Edit .env and replace 'your_groq_api_key_here' with your actual key from https://console.groq.com
 python run.py
 ```
 
@@ -29,6 +29,18 @@ uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 
 Visit http://localhost:8000 to use the UI.
+
+## API Configuration
+
+### Groq API Setup
+1. Get your free API key from [console.groq.com](https://console.groq.com)
+2. Add it to `.env` file:
+   ```properties
+   GROQ_API_KEY=your_groq_api_key_here
+   ```
+3. Restart the server
+
+The app will automatically use Groq for AI-powered planning. If no key is set, it falls back to intelligent heuristic planning.
 
 Database (SQLite)
 - By default an SQLite file `plans.db` will be created in the repo root when you first save a plan.
@@ -54,7 +66,8 @@ pytest -q
 ```
 
 Notes on security and keys
-- Never paste your OpenAI API key in public repositories or chat. Set it in your shell using `setx` or place it in a local `.env` and load it securely.
+- Never paste your Groq API key in public repositories or chat. Use the `.env` file to store it locally and add `.env` to `.gitignore`.
+- The `.env` file is automatically loaded by the app via `python-dotenv`.
 
 Next deliverables
 - Add a short demo video showing the UI and the save/list endpoints (I can provide a script for recording).
