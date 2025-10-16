@@ -12,10 +12,13 @@ from pathlib import Path
 root = Path(__file__).parent
 sys.path.insert(0, str(root))
 
+# Change to project root directory so relative paths work
+os.chdir(str(root))
+
 if __name__ == "__main__":
     print("Starting Smart Task Planner...")
     print("Visit http://localhost:8000 in your browser")
-    print("Set OPENAI_API_KEY environment variable to use OpenAI (optional)")
+    print("Set GROQ_API_KEY environment variable to use Groq (optional)")
     print("Press Ctrl+C to stop")
     
     uvicorn.run(
