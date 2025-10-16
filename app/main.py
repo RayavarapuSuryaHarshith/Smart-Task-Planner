@@ -42,12 +42,12 @@ async def plan(goal_in: GoalIn, request: Request):
         logging.info(f"/plan called with goal={goal_in.goal!r} due_days={goal_in.due_days}")
         
         # Check for API key in request header
-        api_key = request.headers.get("X-OpenAI-Key")
+        api_key = request.headers.get("X-Groq-Key")
         if api_key:
             # Temporarily set the API key for this request
             import os
-            original_key = os.environ.get("OPENAI_API_KEY")
-            os.environ["OPENAI_API_KEY"] = api_key
+            original_key = os.environ.get("GROQ_API_KEY")
+            os.environ["GROQ_API_KEY"] = api_key
             
         import time
         start = time.time()
@@ -57,9 +57,9 @@ async def plan(goal_in: GoalIn, request: Request):
         # Restore original API key
         if api_key:
             if original_key:
-                os.environ["OPENAI_API_KEY"] = original_key
+                os.environ["GROQ_API_KEY"] = original_key
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("GROQ_API_KEY", None)
         
         logging.info(f"/plan finished in {elapsed:.3f}s with {'AI' if api_key else 'fallback'}")
         return {"goal": goal_in.goal, "plan": plan, "ai_used": bool(api_key)}
@@ -74,20 +74,20 @@ async def plan_save(goal_in: GoalIn, request: Request):
         logging.info(f"/plan/save called with goal={goal_in.goal!r} due_days={goal_in.due_days}")
         
         # Check for API key in request header
-        api_key = request.headers.get("X-OpenAI-Key")
+        api_key = request.headers.get("X-Groq-Key")
         if api_key:
             import os
-            original_key = os.environ.get("OPENAI_API_KEY")
-            os.environ["OPENAI_API_KEY"] = api_key
+            original_key = os.environ.get("GROQ_API_KEY")
+            os.environ["GROQ_API_KEY"] = api_key
             
         plan = await generate_plan(goal_in.goal, goal_in.due_days)
         
         # Restore original API key
         if api_key:
             if original_key:
-                os.environ["OPENAI_API_KEY"] = original_key
+                os.environ["GROQ_API_KEY"] = original_key
             else:
-                os.environ.pop("OPENAI_API_KEY", None)
+                os.environ.pop("GROQ_API_KEY", None)
         
         # ensure DB exists
         init_db()
