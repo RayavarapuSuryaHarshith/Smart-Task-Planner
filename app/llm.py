@@ -14,9 +14,9 @@ except Exception:
     pass
 
 # Get API key dynamically to support runtime updates
-def get_openai_key():
-    # Read standard environment variable. The user can set this in .env or system env.
-    return os.getenv("OPENAI_API_KEY")
+def get_groq_key():
+    # Read Groq API key from environment variable
+    return os.getenv("GROQ_API_KEY")
 
 
 class Task(BaseModel):
@@ -30,14 +30,14 @@ class Task(BaseModel):
     phase: str = "development"
 
 
-async def call_openai(prompt: str) -> str:
+async def call_groq(prompt: str) -> str:
     try:
-        import openai
-        client = openai.OpenAI(api_key=get_openai_key())
+        from groq import Groq
+        client = Groq(api_key=get_groq_key())
         
         response = await asyncio.to_thread(
             client.chat.completions.create,
-            model="gpt-4o-mini",
+            model="mixtral-8x7b-32768",
             messages=[
                 {
                     "role": "system", 
@@ -293,15 +293,15 @@ Requirements:
 - Use appropriate phase names (not generic "development/testing")
 """
 
-    openai_key = get_openai_key()
+    openai_key = get_groq_key()
     if openai_key:
-        logging.info("OPENAI_API_KEY found, calling OpenAI with enhanced prompt")
+        logging.info("GROQ_API_KEY found, calling Groq with enhanced prompt")
         try:
-            text = await call_openai(prompt)
+            text = await call_groq(prompt)
             arr = _extract_json_array(text)
             
             if arr is None:
-                logging.warning("OpenAI returned non-JSON, using intelligent fallback")
+                logging.warning("Groq returned non-JSON, using intelligent fallback")
                 return fallback_plan(goal, due_days)
 
             # Enhanced validation with fallback fields
@@ -328,15 +328,15 @@ Requirements:
                     continue
             
             if validated:
-                logging.info(f"OpenAI plan validated successfully: {len(validated)} tasks")
+                logging.info(f"Groq plan validated successfully: {len(validated)} tasks")
                 return validated
             else:
-                logging.warning("No valid tasks from OpenAI, using fallback")
+                logging.warning("No valid tasks from Groq, using fallback")
                 return fallback_plan(goal, due_days)
                 
         except Exception as e:
-            logging.exception("OpenAI call failed, using intelligent fallback")
+            logging.exception("Groq call failed, using intelligent fallback")
             return fallback_plan(goal, due_days)
     else:
-        logging.info("No OPENAI_API_KEY, using intelligent fallback_plan")
+        logging.info("No GROQ_API_KEY, using intelligent fallback_plan")
         return fallback_plan(goal, due_days)
